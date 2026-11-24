@@ -1,0 +1,20 @@
+/*
+ * Mendeklarasikan ulang variabel turunan di dalam elemen ".theme-scope".
+ * Variabel turunan di :root dihitung di :root, sehingga mengganti --color-primary pada
+ * elemen anak saja tidak ikut mengubahnya. Dengan kelas ini, pratinjau warna tampil
+ * persis seperti hasil setelah disimpan.
+ */
+.theme-scope {
+    --color-primary-soft: color-mix(in srgb, var(--color-primary) 22%, white);
+    --color-primary-strong: color-mix(in srgb, var(--color-primary) 65%, #12394d);
+    --color-secondary-soft: color-mix(in srgb, var(--color-secondary) 22%, white);
+    --color-accent-soft: color-mix(in srgb, var(--color-accent) 25%, white);
+
+    --gradient-brand: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+    --gradient-fresh: linear-gradient(135deg, var(--color-accent) 0%, var(--color-primary) 100%);
+    --gradient-hero: linear-gradient(160deg, var(--color-primary-soft) 0%, var(--color-background) 55%, var(--color-accent-soft) 100%);
+    --shadow-glow: 0 10px 30px color-mix(in srgb, var(--color-primary) 55%, transparent);
+
+    background: var(--color-background);
+    color: var(--color-text);
+}
