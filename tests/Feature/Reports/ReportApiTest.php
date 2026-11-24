@@ -79,14 +79,6 @@ class ReportApiTest extends TestCase
         return $this->actingAs($this->admin)->getJson('/api/admin/reports?'.http_build_query($query));
     }
 
-    private function csvRows(string $content, string $delimiter): array
-    {
-        $content = preg_replace('/^\xEF\xBB\xBF/', '', $content);
-        $lines = preg_split("/\r\n|\n|\r/", trim($content));
-
-        return array_map(fn (string $line) => str_getcsv($line, $delimiter, '"', ''), $lines);
-    }
-
     /* ------------------------------ Akses ------------------------------ */
 
     private const ENDPOINTS = [
@@ -440,110 +432,6 @@ class ReportApiTest extends TestCase
             'action' => 'report.printed',
             'user_id' => $this->admin->id,
         ]);
-    }
-
-    /* ------------------------------ Export CSV ------------------------------ */
-
-    public function test_csv_export_with_default_semicolon_delimiter(): void
-    {
-        $this->seedBaseline();
-
-        $response = $this->actingAs($this->admin)->get('/api/admin/reports/export?period=this_month')->assertOk();
-
-        $this->assertStringContainsString('text/csv', $response->headers->get('Content-Type'));
-        $this->assertStringContainsString(
-            'laporan-pemasukan_2026-11-01_2026-11-30.csv',
-            $response->headers->get('Content-Disposition')
-        );
-
-        $content = $response->streamedContent();
-        $this->assertStringStartsWith("\xEF\xBB\xBF", $content);
-
-        $rows = $this->csvRows($content, ';');
-
-        $this->assertCount(5, $rows); // judul + 3 transaksi + total
-        $this->assertSame('Kode Transaksi', $rows[0][0]);
-        $this->assertCount(11, $rows[0]);
-
-        // Urut dari yang terlama: Bedcover (10 Nov), lalu dua transaksi 24 Nov.
-        $this->assertSame('Bedcover', $rows[1][4]);
-        $this->assertSame('item', $rows[1][5]);
-        $this->assertSame('2', $rows[1][6]);
-        $this->assertSame('30000', $rows[1][7]);
-        $this->assertSame('60000', $rows[1][8]);
-        $this->assertSame('2026-11-10 14:00', $rows[1][2]);
-        $this->assertSame($this->admin->name, $rows[1][10]);
-
-        $this->assertSame('1,5', $rows[2][6]);  // koma desimal untuk Excel Indonesia
-        $this->assertSame('12000', $rows[2][8]);
-        $this->assertSame('2,5', $rows[3][6]);
-        $this->assertSame('20000', $rows[3][8]);
-
-        $this->assertSame('TOTAL (3 transaksi)', $rows[4][0]);
-        $this->assertSame('92000', $rows[4][8]);
-
-        $this->assertDatabaseHas('laundry_activity_logs', [
-            'action' => 'report.exported',
-            'user_id' => $this->admin->id,
-        ]);
-    }
-
-    public function test_csv_export_with_comma_delimiter_uses_decimal_points(): void
-    {
-        $this->seedBaseline();
-
-        $content = $this->actingAs($this->admin)
-            ->get('/api/admin/reports/export?period=this_month&delimiter=comma')
-            ->assertOk()
-            ->streamedContent();
-
-        $rows = $this->csvRows($content, ',');
-
-        $this->assertCount(11, $rows[0]);
-        $this->assertSame('1.5', $rows[2][6]);
-        $this->assertSame('2.5', $rows[3][6]);
-    }
-
-    public function test_csv_export_neutralises_spreadsheet_formulas(): void
-    {
-        $payloads = ['=HYPERLINK("http://x")', '+62812', '-1+1', '@SUM(A1)'];
-        $codes = [];
-
-        foreach ($payloads as $index => $payload) {
-            $codes[$payload] = $this->completed($this->kg, '2026-11-1'.($index + 1).' 10:00:00', 1, [
-                'customer_name' => $payload,
-            ])->code;
-        }
-
-        $content = $this->actingAs($this->admin)
-            ->get('/api/admin/reports/export?period=this_month')
-            ->streamedContent();
-
-        $rows = collect($this->csvRows($content, ';'))->keyBy(0);
-
-        foreach ($payloads as $payload) {
-            $this->assertSame("'".$payload, $rows[$codes[$payload]][3]);
-        }
-    }
-
-    public function test_csv_export_respects_package_filter_and_empty_periods(): void
-    {
-        $this->seedBaseline();
-
-        $filtered = $this->actingAs($this->admin)
-            ->get('/api/admin/reports/export?period=this_month&package_id='.$this->item->id)
-            ->streamedContent();
-
-        $this->assertCount(3, $this->csvRows($filtered, ';')); // judul + 1 transaksi + total
-
-        $empty = $this->actingAs($this->admin)
-            ->get('/api/admin/reports/export?period=custom&date_from=2024-01-01&date_to=2024-01-31')
-            ->streamedContent();
-
-        $rows = $this->csvRows($empty, ';');
-        $this->assertCount(2, $rows);
-        $this->assertSame('TOTAL (0 transaksi)', $rows[1][0]);
-        $this->assertSame('0', $rows[1][8]);
     }
 
     public function test_package_names_and_prices_use_the_snapshot_not_the_current_package(): void

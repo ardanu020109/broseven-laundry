@@ -33,7 +33,6 @@ class ReportFilterRequest extends FormRequest
             'package_id' => ['nullable', 'integer', Rule::exists('laundry_packages', 'id')],
             'search' => ['nullable', 'string', 'max:100'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
-            'delimiter' => ['nullable', Rule::in(['semicolon', 'comma'])],
         ];
     }
 
@@ -87,11 +86,5 @@ class ReportFilterRequest extends FormRequest
     public function perPage(): int
     {
         return (int) ($this->input('per_page') ?: 15);
-    }
-
-    /** Pemisah kolom CSV. Default ";" agar terbuka rapi di Excel berlokal Indonesia. */
-    public function csvDelimiter(): string
-    {
-        return $this->input('delimiter') === 'comma' ? ',' : ';';
     }
 }

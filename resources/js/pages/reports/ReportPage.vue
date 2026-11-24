@@ -13,7 +13,7 @@ import BaseTable from '@/components/common/BaseTable.vue';
 import RevenueChart from '@/components/dashboard/RevenueChart.vue';
 import StatCard from '@/components/dashboard/StatCard.vue';
 import {
-    downloadReportCsv,
+    downloadReportExcel,
     fetchReport,
     fetchReportPrint,
     fetchReportTransactions,
@@ -39,11 +39,6 @@ const PERIODS = [
 
 const GRANULARITY_LABEL = { hour: 'per jam', day: 'per hari', month: 'per bulan' };
 
-const DELIMITER_OPTIONS = [
-    { value: 'semicolon', label: 'Excel Indonesia (pemisah titik koma)' },
-    { value: 'comma', label: 'Standar (pemisah koma)' },
-];
-
 const filters = reactive({
     period: 'this_month',
     date_from: todayKey().slice(0, 8) + '01',
@@ -52,7 +47,6 @@ const filters = reactive({
     search: '',
 });
 
-const delimiter = ref('semicolon');
 const report = ref(null);
 const packages = ref([]);
 const rows = ref([]);
@@ -178,14 +172,14 @@ watch(
     },
 );
 
-async function exportCsv() {
+async function exportExcel() {
     exporting.value = true;
     actionError.value = '';
 
     try {
-        await downloadReportCsv({ ...baseParams(), delimiter: delimiter.value });
+        await downloadReportExcel(baseParams());
     } catch (err) {
-        actionError.value = extractErrorMessage(err, 'File CSV tidak dapat diunduh.');
+        actionError.value = extractErrorMessage(err, 'File Excel tidak dapat diunduh.');
     } finally {
         exporting.value = false;
     }
@@ -253,10 +247,9 @@ onBeforeUnmount(() => clearTimeout(searchTimer));
                     <p v-if="customError" class="report__inline-error" role="alert">{{ customError }}</p>
 
                     <div class="report__actions">
-                        <BaseSelect v-model="delimiter" label="Format CSV" :options="DELIMITER_OPTIONS" />
-                        <BaseButton variant="secondary" :loading="exporting" :disabled="!hasIncome" @click="exportCsv">
+                        <BaseButton variant="secondary" :loading="exporting" :disabled="!hasIncome" @click="exportExcel">
                             <Download :size="18" />
-                            Export CSV
+                            Export Excel
                         </BaseButton>
                         <BaseButton variant="secondary" :loading="printing" :disabled="!hasIncome" @click="printReport">
                             <Printer :size="18" />
@@ -477,7 +470,7 @@ onBeforeUnmount(() => clearTimeout(searchTimer));
 
             <p v-if="printData.truncated" class="rp__note">
                 Hanya {{ formatNumber(printData.limit, 0) }} transaksi pertama yang ditampilkan.
-                Gunakan Export CSV untuk data lengkap.
+                Gunakan Export Excel untuk data lengkap.
             </p>
         </section>
     </main>
@@ -510,7 +503,6 @@ onBeforeUnmount(() => clearTimeout(searchTimer));
 .report__filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-4); }
 
 .report__actions { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-3); }
-.report__actions > :first-child { flex: 1 1 240px; }
 
 .report__inline-error { margin: 0; font-size: var(--text-sm); color: var(--color-danger); }
 

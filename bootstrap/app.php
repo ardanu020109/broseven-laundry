@@ -7,6 +7,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Middleware\SubstituteBindings;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
@@ -26,6 +27,13 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => RoleMiddleware::class,
             'active' => EnsureUserIsActive::class,
         ]);
+
+        // Otorisasi harus berjalan SEBELUM route model binding. Urutannya:
+        // login -> akun aktif -> role -> binding. Tanpa ini, karyawan yang mengakses
+        // /api/admin/xxx/{id} mendapat 404 (ID tidak ada) atau 403 (ID ada), sehingga
+        // keberadaan data bisa ditebak.
+        $middleware->prependToPriorityList(SubstituteBindings::class, EnsureUserIsActive::class);
+        $middleware->prependToPriorityList(SubstituteBindings::class, RoleMiddleware::class);
 
         // Pengaman untuk route web non-API yang memakai middleware auth.
         $middleware->redirectGuestsTo('/login');

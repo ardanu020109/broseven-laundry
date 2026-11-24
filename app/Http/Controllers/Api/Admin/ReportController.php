@@ -7,6 +7,7 @@ use App\Http\Requests\Reports\ReportFilterRequest;
 use App\Http\Resources\ReportTransactionResource;
 use App\Services\ActivityLogService;
 use App\Services\LaundryReportService;
+use App\Services\ReportExportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -15,6 +16,7 @@ class ReportController extends Controller
 {
     public function __construct(
         private readonly LaundryReportService $reports,
+        private readonly ReportExportService $exports,
         private readonly ActivityLogService $activity,
     ) {
     }
@@ -59,32 +61,29 @@ class ReportController extends Controller
         return response()->json(['data' => $data]);
     }
 
-    /** Unduh CSV. */
+    /** Unduh Excel (.xlsx). */
     public function export(ReportFilterRequest $request): StreamedResponse
     {
         $range = $request->range();
         $packageId = $request->packageId();
-        $delimiter = $request->csvDelimiter();
+
+        // Workbook dibuat SEBELUM pengiriman dimulai, sehingga kegagalan menghasilkan
+        // respons error biasa, bukan file yang rusak.
+        $spreadsheet = $this->exports->build($range, $packageId);
 
         $this->activity->log(
             'report.exported',
-            "Mengunduh laporan pemasukan {$range->label()} (CSV)",
+            "Mengunduh laporan pemasukan {$range->label()} (Excel)",
             null,
-            ['period' => $range->period, 'package_id' => $packageId],
+            ['period' => $range->period, 'package_id' => $packageId, 'format' => 'xlsx'],
             $request->user()
         );
 
         return response()->streamDownload(
-            function () use ($range, $packageId, $delimiter) {
-                $output = fopen('php://output', 'w');
-
-                $this->reports->writeCsv($output, $range, $packageId, $delimiter);
-
-                fclose($output);
-            },
-            $this->reports->csvFilename($range),
+            fn () => $this->exports->write($spreadsheet),
+            $this->exports->filename($range),
             [
-                'Content-Type' => 'text/csv; charset=UTF-8',
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                 'Cache-Control' => 'no-store, private',
                 'X-Content-Type-Options' => 'nosniff',
             ]

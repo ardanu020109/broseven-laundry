@@ -22,8 +22,8 @@ export async function fetchReportPrint(params) {
     return data.data;
 }
 
-/** Mengunduh CSV lewat Axios (membawa sesi login), lalu memicu penyimpanan file. */
-export async function downloadReportCsv(params) {
+/** Mengunduh file Excel lewat Axios (membawa sesi login), lalu memicu penyimpanan file. */
+export async function downloadReportExcel(params) {
     try {
         const response = await http.get('/api/admin/reports/export', {
             params: clean(params),
@@ -32,7 +32,7 @@ export async function downloadReportCsv(params) {
 
         const disposition = response.headers['content-disposition'] || '';
         const match = disposition.match(/filename="?([^";]+)"?/i);
-        const filename = match ? match[1] : 'laporan-pemasukan.csv';
+        const filename = match ? match[1] : 'laporan-pemasukan.xlsx';
 
         const url = URL.createObjectURL(response.data);
         const link = document.createElement('a');

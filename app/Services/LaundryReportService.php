@@ -20,8 +20,6 @@ class LaundryReportService
 {
     public const PRINT_LIMIT = 2000;
 
-    private const CSV_CHUNK = 500;
-
     /* ---------------------------------------------------------------
      | Laporan utama
      | ------------------------------------------------------------- */
@@ -58,96 +56,46 @@ class LaundryReportService
             ->paginate($perPage);
     }
 
-    /** @return array<string, mixed> */
-    public function printable(ReportRange $range, ?int $packageId): array
+    /**
+     * Ringkasan untuk cetak dan Excel (tanpa rincian transaksi).
+     *
+     * @return array<string, mixed>
+     */
+    public function overview(ReportRange $range, ?int $packageId): array
     {
         $totals = $this->totals($range, $packageId);
 
-        $rows = $this->baseQuery($range, $packageId)
-            ->with(['receiver', 'completer'])
-            ->orderBy('completed_at')
-            ->orderBy('id')
-            ->limit(self::PRINT_LIMIT)
-            ->get();
-
         return [
             'business' => ['name' => $this->businessName()],
-            'generated_at' => now()->toIso8601String(),
             'period' => $range->toArray(),
             'package' => $this->packageFilter($packageId),
             'summary' => $this->presentSummary($totals),
             'by_package' => $this->byPackage($range, $packageId, $totals['income']),
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    public function printable(ReportRange $range, ?int $packageId): array
+    {
+        $overview = $this->overview($range, $packageId);
+
+        $rows = $this->exportRows($range, $packageId)->limit(self::PRINT_LIMIT)->get();
+
+        return $overview + [
+            'generated_at' => now()->toIso8601String(),
             'transactions' => $rows,
-            'truncated' => $totals['count'] > self::PRINT_LIMIT,
+            'truncated' => $overview['summary']['transaction_count'] > self::PRINT_LIMIT,
             'limit' => self::PRINT_LIMIT,
         ];
     }
 
-    /* ---------------------------------------------------------------
-     | Export CSV
-     | ------------------------------------------------------------- */
-
-    public function csvFilename(ReportRange $range): string
+    /** Transaksi selesai pada rentang tersebut, urut dari yang terlama (untuk cetak dan Excel). */
+    public function exportRows(ReportRange $range, ?int $packageId): Builder
     {
-        return 'laporan-pemasukan_'.$range->from->format('Y-m-d').'_'.$range->to->format('Y-m-d').'.csv';
-    }
-
-    /**
-     * Menulis CSV ke handle. Diawali BOM UTF-8 agar Excel membaca huruf dengan benar.
-     * Pemisah ";" memakai koma desimal (Excel Indonesia); pemisah "," memakai titik desimal.
-     *
-     * @param  resource  $handle
-     */
-    public function writeCsv($handle, ReportRange $range, ?int $packageId, string $delimiter = ';'): void
-    {
-        $decimal = $delimiter === ',' ? '.' : ',';
-
-        fwrite($handle, "\xEF\xBB\xBF");
-
-        $this->putCsv($handle, [
-            'Kode Transaksi',
-            'Tanggal Masuk',
-            'Tanggal Selesai',
-            'Nama Customer',
-            'Paket',
-            'Satuan',
-            'Jumlah',
-            'Harga Satuan',
-            'Total',
-            'Diterima Oleh',
-            'Diserahkan Oleh',
-        ], $delimiter);
-
-        $this->baseQuery($range, $packageId)
+        return $this->baseQuery($range, $packageId)
             ->with(['receiver', 'completer'])
             ->orderBy('completed_at')
-            ->orderBy('id')
-            ->chunk(self::CSV_CHUNK, function ($chunk) use ($handle, $delimiter, $decimal) {
-                foreach ($chunk as $transaction) {
-                    $this->putCsv($handle, [
-                        $this->csvText($transaction->code),
-                        $this->csvDate($transaction->received_at),
-                        $this->csvDate($transaction->completed_at),
-                        $this->csvText($transaction->customer_name),
-                        $this->csvText($transaction->package_name),
-                        $transaction->package_unit->value,
-                        $this->csvNumber((string) $transaction->quantity, $decimal),
-                        $this->csvNumber((string) $transaction->package_price, $decimal),
-                        $this->csvNumber((string) $transaction->total_price, $decimal),
-                        $this->csvText($transaction->receiver?->name),
-                        $this->csvText($transaction->completer?->name),
-                    ], $delimiter);
-                }
-            });
-
-        $totals = $this->totals($range, $packageId);
-
-        $this->putCsv($handle, [
-            "TOTAL ({$totals['count']} transaksi)",
-            '', '', '', '', '', '', '',
-            $this->csvNumber($totals['income'], $decimal),
-            '', '',
-        ], $delimiter);
+            ->orderBy('id');
     }
 
     /* ---------------------------------------------------------------
@@ -402,46 +350,5 @@ class LaundryReportService
         $name = trim((string) LaundryWebsiteSetting::query()->where('key', 'business_name')->value('value'));
 
         return $name !== '' ? $name : (string) config('app.name');
-    }
-
-    /* ---------------------------------------------------------------
-     | Pembantu CSV
-     | ------------------------------------------------------------- */
-
-    /**
-     * @param  resource  $handle
-     * @param  array<int, string>  $row
-     */
-    private function putCsv($handle, array $row, string $delimiter): void
-    {
-        // Parameter escape dikosongkan agar sesuai RFC 4180 (dan aman di PHP 8.4+).
-        fputcsv($handle, $row, $delimiter, '"', '');
-    }
-
-    /** Mencegah CSV injection: sel teks yang diawali = + - @ dianggap teks oleh Excel. */
-    private function csvText(?string $value): string
-    {
-        $text = (string) $value;
-
-        if ($text !== '' && in_array($text[0], ['=', '+', '-', '@', "\t", "\r"], true)) {
-            return "'".$text;
-        }
-
-        return $text;
-    }
-
-    private function csvDate(mixed $date): string
-    {
-        return $date ? $date->copy()->timezone(ReportRange::TIMEZONE)->format('Y-m-d H:i') : '';
-    }
-
-    /** 20000.00 => "20000"; 2.50 => "2,5" (atau "2.5" dengan pemisah koma). */
-    private function csvNumber(string $value, string $decimalSeparator): string
-    {
-        $number = Money::decimal($value);
-
-        $number = str_ends_with($number, '.00') ? substr($number, 0, -3) : rtrim($number, '0');
-
-        return str_replace('.', $decimalSeparator, $number);
     }
 }

@@ -49,7 +49,7 @@ class PublicSiteApiTest extends TestCase
             $this->assertStringNotContainsString($secret, $body);
         }
 
-        $this->assertStringContainsString('/api/public/media/'.str_repeat('a', 40).'.png', $body);
+        $this->assertSame('/api/public/media/'.str_repeat('a', 40).'.png', json_decode($body, true)['data']['business']['logo_url']);
     }
 
     public function test_only_active_packages_are_listed_in_order(): void
