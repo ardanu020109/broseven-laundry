@@ -1,2 +1,11 @@
 User-agent: *
-Disallow:
+Allow: /
+Disallow: /api/
+Disallow: /tracking/
+Disallow: /verify
+Disallow: /login
+Disallow: /dashboard
+Disallow: /reports
+Disallow: /website-settings
+Disallow: /employees
+Disallow: /account

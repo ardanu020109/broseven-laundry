@@ -3,3 +3,5 @@
 @import './base.css';
 @import './utilities.css';
 @import './animations.css';
+@import './public.css';
+@import './dashboard.css';

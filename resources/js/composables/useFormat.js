@@ -54,3 +54,22 @@ export function formatPercent(value) {
 export function todayKey() {
     return new Intl.DateTimeFormat('en-CA', { timeZone: TIMEZONE }).format(new Date());
 }
+
+/** Waktu ISO => nilai untuk <input type="datetime-local"> dalam WITA (YYYY-MM-DDTHH:mm). */
+export function toDateTimeLocal(value) {
+    if (!value) return '';
+
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: TIMEZONE,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23',
+    }).formatToParts(new Date(value));
+
+    const get = (type) => parts.find((part) => part.type === type)?.value ?? '';
+
+    return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}`;
+}

@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\Admin\ProcedureController;
 use App\Http\Controllers\Api\Admin\ReportController;
 use App\Http\Controllers\Api\Admin\WebsiteSettingController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\AvatarController;
 use App\Http\Controllers\Api\MediaController;
 use App\Http\Controllers\Api\PackageController;
@@ -77,6 +78,14 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     // 3. Admin dan Karyawan
     Route::middleware('role:admin,employee')->group(function () {
         Route::get('packages', [PackageController::class, 'index'])->name('packages.index');
+
+        // Dashboard dan notifikasi (pemasukan hanya dikirim untuk admin)
+        Route::get('dashboard', [DashboardController::class, 'show'])
+            ->middleware('throttle:120,1,dashboard')
+            ->name('dashboard');
+        Route::get('notifications', [DashboardController::class, 'notifications'])
+            ->middleware('throttle:120,1,notifications')
+            ->name('notifications');
 
         // Harus didefinisikan SEBELUM apiResource agar tidak dianggap {transaction}.
         Route::get('transactions/statuses', [TransactionController::class, 'statuses'])

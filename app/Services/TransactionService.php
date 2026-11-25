@@ -39,6 +39,12 @@ class TransactionService
             ->when($status === 'IN_PROGRESS', fn (Builder $q) => $q->inProgress())
             ->when($status && $status !== 'IN_PROGRESS', fn (Builder $q) => $q->withStatus($status))
             ->when(
+                filter_var($filters['overdue'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                fn (Builder $q) => $q->inProgress()
+                    ->whereNotNull('estimated_completion_at')
+                    ->where('estimated_completion_at', '<', now())
+            )
+            ->when(
                 ! empty($filters['date_from']),
                 fn (Builder $q) => $q->where('received_at', '>=', Carbon::parse($filters['date_from'])->startOfDay())
             )

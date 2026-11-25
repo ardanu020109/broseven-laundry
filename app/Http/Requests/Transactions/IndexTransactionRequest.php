@@ -26,6 +26,8 @@ class IndexTransactionRequest extends FormRequest
             'date_from' => ['nullable', 'date'],
             'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            // Hanya cucian dalam proses yang sudah melewati estimasi selesai.
+            'overdue' => ['nullable', 'boolean'],
         ];
     }
 }

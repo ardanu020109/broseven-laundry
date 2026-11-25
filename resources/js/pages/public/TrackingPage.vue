@@ -91,7 +91,7 @@ watch(token, () => load());
         <header class="track__header">
             <div class="container track__header-inner">
                 <span class="track__logo"><Droplets :size="20" /></span>
-                <strong>{{ data?.business?.name || appName }}</strong>
+                <RouterLink to="/" class="track__home"><strong>{{ data?.business?.name || appName }}</strong></RouterLink>
             </div>
         </header>
 
