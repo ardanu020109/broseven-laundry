@@ -1,9 +1,10 @@
 <script setup>
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { LogOut, ScanLine, Settings, TrendingUp } from 'lucide-vue-next';
+import { LogOut, ScanLine, Settings, TrendingUp, User, Users } from 'lucide-vue-next';
 import BaseButton from '@/components/common/BaseButton.vue';
 import BaseCard from '@/components/common/BaseCard.vue';
+import UserAvatar from '@/components/common/UserAvatar.vue';
 import { useAuthStore } from '@/stores/auth';
 
 const auth = useAuthStore();
@@ -35,7 +36,11 @@ async function logout() {
         <div class="container dash__inner">
             <BaseCard class="dash__card">
                 <p class="text-muted">Sementara. Dashboard lengkap dibuat di Fase 13.</p>
-                <h1>Halo, {{ auth.user?.name }}</h1>
+
+                <div class="dash__who">
+                    <UserAvatar :name="auth.user?.name ?? ''" :url="auth.user?.avatar_url" :size="56" />
+                    <h1>Halo, {{ auth.user?.name }}</h1>
+                </div>
 
                 <dl class="dash__list">
                     <div><dt>Email</dt><dd>{{ auth.user?.email }}</dd></div>
@@ -57,6 +62,14 @@ async function logout() {
                         <Settings :size="18" />
                         Pengaturan Website
                     </BaseButton>
+                    <BaseButton v-if="auth.can('manage-employees')" @click="router.push('/employees')">
+                        <Users :size="18" />
+                        Kelola Karyawan
+                    </BaseButton>
+                    <BaseButton variant="secondary" @click="router.push('/account')">
+                        <User :size="18" />
+                        Pengaturan Akun
+                    </BaseButton>
                     <BaseButton variant="secondary" :loading="loggingOut" @click="logout">
                         <LogOut :size="18" />
                         Keluar
@@ -70,7 +83,9 @@ async function logout() {
 <style scoped>
 .dash { min-height: 100vh; display: grid; place-items: center; background: var(--gradient-hero); padding-block: var(--space-8); }
 .dash__inner { display: grid; place-items: center; }
-.dash__card { width: 100%; max-width: 520px; }
+.dash__card { width: 100%; max-width: 560px; }
+.dash__who { display: flex; align-items: center; gap: var(--space-4); }
+.dash__who h1 { margin: 0; font-size: var(--text-xl); }
 .dash__list { display: grid; gap: var(--space-3); margin: var(--space-5) 0; }
 .dash__list div { display: flex; justify-content: space-between; gap: var(--space-4); padding-bottom: var(--space-3); border-bottom: 1px solid var(--color-border); }
 .dash__list dt { color: var(--color-muted); }

@@ -5,13 +5,14 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Resources\UserResource;
+use App\Services\ActivityLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class AuthController extends Controller
 {
-    public function login(LoginRequest $request): JsonResponse
+    public function login(LoginRequest $request, ActivityLogService $activity): JsonResponse
     {
         abort_unless(
             $request->hasSession(),
@@ -32,6 +33,8 @@ class AuthController extends Controller
         ])->save();
         $user->timestamps = true;
 
+        $activity->log('auth.login', 'Login ke aplikasi', null, [], $user);
+
         return response()->json([
             'message' => 'Login berhasil.',
             'data' => new UserResource($user),
@@ -43,8 +46,12 @@ class AuthController extends Controller
         return new UserResource($request->user());
     }
 
-    public function logout(Request $request): JsonResponse
+    public function logout(Request $request, ActivityLogService $activity): JsonResponse
     {
+        if ($request->user()) {
+            $activity->log('auth.logout', 'Logout dari aplikasi', null, [], $request->user());
+        }
+
         Auth::guard('web')->logout();
 
         if ($request->hasSession()) {

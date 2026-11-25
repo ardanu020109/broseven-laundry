@@ -18,6 +18,7 @@ return [
     'unique' => ':attribute sudah digunakan.',
     'regex' => 'Format :attribute tidak valid.',
     'confirmed' => 'Konfirmasi :attribute tidak cocok.',
+    'different' => ':attribute dan :other harus berbeda.',
     'current_password' => 'Password saat ini salah.',
     'decimal' => ':attribute hanya boleh memiliki :decimal angka desimal.',
     'image' => ':attribute harus berupa gambar.',
@@ -44,13 +45,26 @@ return [
         'string' => ':attribute harus di antara :min dan :max karakter.',
     ],
 
+    // Aturan Password::min(8)->letters()->numbers()
+    'password' => [
+        'letters' => ':attribute harus mengandung minimal satu huruf.',
+        'mixed' => ':attribute harus mengandung huruf besar dan huruf kecil.',
+        'numbers' => ':attribute harus mengandung minimal satu angka.',
+        'symbols' => ':attribute harus mengandung minimal satu simbol.',
+        'uncompromised' => ':attribute pernah bocor di internet. Gunakan password lain.',
+    ],
+
     'attributes' => [
         'login' => 'email atau username',
         'password' => 'password',
+        'current_password' => 'password saat ini',
+        'password_confirmation' => 'konfirmasi password',
         'email' => 'email',
         'name' => 'nama',
         'username' => 'username',
-        'phone' => 'nomor telepon',
+        'phone' => 'nomor WhatsApp',
+        'photo' => 'foto profil',
+        'group' => 'kelompok aktivitas',
         'customer_name' => 'nama customer',
         'customer_phone' => 'nomor WhatsApp',
         'package_id' => 'paket laundry',
@@ -65,7 +79,6 @@ return [
         'date_to' => 'tanggal akhir',
         'per_page' => 'jumlah per halaman',
         'period' => 'periode',
-        'delimiter' => 'format CSV',
 
         'business_name' => 'nama bisnis',
         'tagline' => 'slogan',

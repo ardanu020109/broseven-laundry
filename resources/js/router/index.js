@@ -60,6 +60,27 @@ const routes = [
         },
     },
     {
+        path: '/employees',
+        name: 'employees',
+        component: () => import('@/pages/employees/EmployeesPage.vue'),
+        meta: {
+            title: 'Kelola Karyawan',
+            requiresAuth: true,
+            roles: ['admin'],
+            ability: 'manage-employees',
+        },
+    },
+    {
+        path: '/account',
+        name: 'account',
+        component: () => import('@/pages/account/AccountPage.vue'),
+        meta: {
+            title: 'Pengaturan Akun',
+            requiresAuth: true,
+            roles: ['admin', 'employee'],
+        },
+    },
+    {
         path: '/403',
         name: 'forbidden',
         component: () => import('@/pages/ForbiddenPage.vue'),

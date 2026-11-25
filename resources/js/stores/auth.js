@@ -53,6 +53,11 @@ export const useAuthStore = defineStore('auth', {
             }
         },
 
+        /** Memperbarui data pengguna di state (mis. setelah mengubah profil atau foto). */
+        setUser(user) {
+            this.user = user;
+        },
+
         /** Membersihkan state lokal tanpa memanggil server (sesi sudah berakhir). */
         clear() {
             this.user = null;

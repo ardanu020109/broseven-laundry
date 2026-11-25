@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Enums\UserRole;
 use App\Models\User;
 use App\Services\WhatsApp\ClickToChatGateway;
 use App\Services\WhatsApp\WhatsAppGateway;
@@ -9,6 +10,7 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use InvalidArgumentException;
 
@@ -23,6 +25,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->defineGates();
         $this->defineRateLimiters();
+        $this->defineRouteBindings();
     }
 
     /**
@@ -73,5 +76,16 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('tracking', fn (Request $request) => Limit::perMinute(40)->by('tracking|'.$request->ip()));
 
         RateLimiter::for('tracking-qr', fn (Request $request) => Limit::perMinute(60)->by('tracking-qr|'.$request->ip()));
+    }
+
+    /**
+     * {employee} hanya cocok dengan akun berole karyawan. Akun admin menghasilkan 404,
+     * sehingga admin tidak bisa diubah lewat modul Kelola Karyawan.
+     */
+    private function defineRouteBindings(): void
+    {
+        Route::bind('employee', fn (string $value) => User::query()
+            ->where('role', UserRole::Employee->value)
+            ->findOrFail($value));
     }
 }
