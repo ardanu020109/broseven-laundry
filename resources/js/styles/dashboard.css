@@ -1,0 +1,26 @@
+/*
+ * Halaman internal dipasang di dalam DashboardLayout (.dash-embed).
+ * Aturan di bawah menetralkan latar, tinggi penuh, dan tombol "Dashboard" bawaan
+ * halaman-halaman lama (laporan, pengaturan, karyawan, akun, verifikasi).
+ */
+.dash-embed > main {
+    min-height: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+}
+
+.dash-embed .container { padding-inline: 0; }
+
+.dash-embed header > .btn--ghost:first-child { display: none; }
+
+@media print {
+    .dash__sidebar,
+    .dash__topbar,
+    .dash__overlay,
+    .skip,
+    .toasts { display: none !important; }
+
+    .dash__main { margin-left: 0 !important; }
+    .dash__content { padding: 0 !important; }
+    body { background: #fff !important; }
+}
