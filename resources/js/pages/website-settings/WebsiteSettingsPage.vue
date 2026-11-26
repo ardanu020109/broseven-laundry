@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { ArrowLeft } from 'lucide-vue-next';
 import BaseButton from '@/components/common/BaseButton.vue';
 import BaseLoading from '@/components/common/BaseLoading.vue';
+import BannerExporter from '@/components/website/BannerExporter.vue';
 import ColorSettings from '@/components/website/ColorSettings.vue';
 import FaqManager from '@/components/website/FaqManager.vue';
 import IdentityForm from '@/components/website/IdentityForm.vue';
@@ -18,6 +19,7 @@ const TABS = [
     { key: 'procedures', label: 'Prosedur' },
     { key: 'faqs', label: 'FAQ' },
     { key: 'appearance', label: 'Warna Website' },
+    { key: 'banner', label: 'Banner Promosi' },
 ];
 
 const route = useRoute();
@@ -93,6 +95,7 @@ onMounted(load);
                 <PackageManager v-else-if="tab === 'packages'" />
                 <ProcedureManager v-else-if="tab === 'procedures'" />
                 <FaqManager v-else-if="tab === 'faqs'" />
+                <BannerExporter v-else-if="tab === 'banner'" />
                 <ColorSettings v-else :items="colors" @updated="(value) => (colors = value)" />
             </template>
         </div>

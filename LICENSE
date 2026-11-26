@@ -1,0 +1,50 @@
+LISENSI PERANGKAT LUNAK BROSEVEN! LAUNDRY
+
+Hak Cipta (c) 2026 BroSeven! Developer. Seluruh hak dilindungi.
+
+Perangkat lunak "BroSeven! Laundry" ("Perangkat Lunak"), termasuk kode sumber, desain antarmuka,
+aset, dan dokumentasinya, dimiliki oleh BroSeven! Developer ("Pemberi Lisensi").
+
+1. PEMBERIAN LISENSI
+   Pemberi Lisensi memberikan kepada pihak yang menerima salinan Perangkat Lunak secara sah
+   ("Pengguna") lisensi yang terbatas, non-eksklusif, tidak dapat dialihkan, dan tidak dapat
+   disublisensikan untuk:
+   a. memasang dan menjalankan Perangkat Lunak untuk operasional satu (1) bisnis laundry milik
+      Pengguna;
+   b. membuat salinan cadangan untuk keperluan pemulihan data; dan
+   c. mengatur konfigurasi dan konten melalui fitur yang disediakan Perangkat Lunak.
+
+2. PEMBATASAN
+   Tanpa izin tertulis dari Pemberi Lisensi, Pengguna dilarang:
+   a. menjual, menyewakan, meminjamkan, atau mendistribusikan ulang Perangkat Lunak;
+   b. menyediakan Perangkat Lunak sebagai layanan bagi pihak ketiga atau banyak bisnis;
+   c. menghapus atau mengubah pemberitahuan hak cipta dan lisensi;
+   d. mempublikasikan kode sumber atau mengklaim Perangkat Lunak sebagai karya sendiri.
+
+3. KOMPONEN PIHAK KETIGA
+   Perangkat Lunak menggunakan komponen sumber terbuka (antara lain Laravel, Vue.js, dan pustaka
+   lain yang tercantum pada composer.json dan package.json). Komponen tersebut tetap tunduk pada
+   lisensinya masing-masing, dan Lisensi ini tidak mengubahnya.
+
+4. KEPEMILIKAN
+   Seluruh hak atas Perangkat Lunak tetap berada pada Pemberi Lisensi. Data bisnis yang dimasukkan
+   Pengguna (pelanggan, transaksi, konten website) tetap menjadi milik Pengguna.
+
+5. TANPA JAMINAN
+   PERANGKAT LUNAK DIBERIKAN "SEBAGAIMANA ADANYA", TANPA JAMINAN DALAM BENTUK APA PUN, TERSURAT
+   MAUPUN TERSIRAT, TERMASUK KELAYAKAN UNTUK DIPERDAGANGKAN, KESESUAIAN UNTUK TUJUAN TERTENTU, DAN
+   KETIADAAN PELANGGARAN HAK.
+
+6. BATASAN TANGGUNG JAWAB
+   Sejauh diizinkan hukum, Pemberi Lisensi tidak bertanggung jawab atas kerugian langsung maupun
+   tidak langsung, kehilangan data, atau kehilangan keuntungan yang timbul dari penggunaan
+   Perangkat Lunak. Pengguna bertanggung jawab melakukan backup data secara berkala.
+
+7. PENGAKHIRAN
+   Lisensi berakhir otomatis apabila Pengguna melanggar ketentuan di atas. Setelah berakhir,
+   Pengguna wajib berhenti menggunakan dan menghapus salinan Perangkat Lunak.
+
+8. HUKUM YANG BERLAKU
+   Lisensi ini tunduk pada hukum Republik Indonesia.
+
+Untuk izin tertulis atau pertanyaan lisensi, hubungi BroSeven! Developer.

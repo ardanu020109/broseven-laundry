@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AccountController;
+use App\Http\Controllers\Api\Admin\BannerController;
 use App\Http\Controllers\Api\Admin\EmployeeController;
 use App\Http\Controllers\Api\Admin\FaqController;
 use App\Http\Controllers\Api\Admin\PackageManagementController;
@@ -160,6 +161,12 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
 
             Route::put('colors', [WebsiteSettingController::class, 'updateColors'])->name('colors.update');
             Route::post('colors/reset', [WebsiteSettingController::class, 'resetColors'])->name('colors.reset');
+
+            // Banner promosi PNG (gambar dibuat di browser; backend menyediakan ukuran dan mencatat ekspor)
+            Route::get('banner/presets', [BannerController::class, 'presets'])->name('banner.presets');
+            Route::post('banner/exports', [BannerController::class, 'exported'])
+                ->middleware('throttle:30,1,banner-export')
+                ->name('banner.exports');
         });
 
         // Rute "reorder" dan "restore" harus SEBELUM apiResource.

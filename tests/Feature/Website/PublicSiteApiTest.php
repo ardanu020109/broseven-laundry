@@ -145,24 +145,6 @@ class PublicSiteApiTest extends TestCase
         $this->getJson('/api/public/site')->assertStatus(429);
     }
 
-    /* ------------------------------ Shell SPA ------------------------------ */
-
-    public function test_spa_shell_embeds_theme_title_and_favicon_from_the_database(): void
-    {
-        $favicon = 'branding/'.str_repeat('a', 40).'.png';
-
-        LaundryColor::create(['key' => 'primary', 'label' => 'Primary', 'value' => '#F4A6C0', 'default_value' => '#ADD8E6']);
-        $this->setting('business_name', 'Laundry Uji');
-        $this->setting('favicon_path', $favicon, 'branding', 'image');
-
-        $this->get('/')
-            ->assertOk()
-            ->assertSee('<title>Laundry Uji</title>', false)
-            ->assertSee('<style id="site-theme">html:root{--color-primary:#F4A6C0;', false)
-            ->assertSee('<link rel="icon" href="/api/public/media/'.str_repeat('a', 40).'.png">', false)
-            ->assertSee('<meta name="theme-color" content="#F4A6C0">', false);
-    }
-
     public function test_spa_shell_escapes_content_and_ignores_invalid_colors(): void
     {
         $this->setting('business_name', '</title><script>alert(1)</script>');

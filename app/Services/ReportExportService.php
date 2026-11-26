@@ -16,13 +16,12 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 /**
- * Membuat file Excel (.xlsx) laporan pemasukan.
+ * File Excel (.xlsx) laporan pemasukan: SATU lembar "Laporan" dengan susunan seperti cetak/PDF
+ * (ringkasan, pemasukan per paket, lalu rincian SEMUA transaksi customer).
  *
- * Aturan penting:
- *  - Teks SELALU ditulis sebagai teks murni (setCellValueExplicit), sehingga isi yang
- *    diawali "=", "+", "-", atau "@" tidak pernah dijalankan sebagai rumus.
+ *  - Teks selalu ditulis sebagai teks murni (isi berawalan = + - @ tidak menjadi rumus).
  *  - Angka dan tanggal ditulis sebagai angka/tanggal asli agar bisa dijumlahkan dan difilter.
- *  - Seluruh angka berasal dari LaundryReportService (backend), bukan dihitung ulang di sini.
+ *  - Seluruh angka berasal dari LaundryReportService (backend).
  */
 class ReportExportService
 {
@@ -53,7 +52,7 @@ class ReportExportService
         return 'laporan-pemasukan_'.$range->from->format('Y-m-d').'_'.$range->to->format('Y-m-d').'.xlsx';
     }
 
-    /** Batas jumlah baris rincian (ringkasan dan total tetap mencakup semua transaksi). */
+    /** Batas baris rincian transaksi (ringkasan dan total tetap mencakup semua transaksi). */
     public function rowLimit(): int
     {
         return max(1, (int) config('broseven.reports.export_limit', self::DEFAULT_ROW_LIMIT));
@@ -71,15 +70,9 @@ class ReportExportService
             ->setTitle('Laporan Pemasukan '.$range->label())
             ->setSubject('Laporan Pemasukan');
 
-        $summary = $spreadsheet->getActiveSheet();
-        $summary->setTitle('Ringkasan');
-        $this->summarySheet($summary, $overview);
-
-        $details = $spreadsheet->createSheet();
-        $details->setTitle('Transaksi');
-        $this->detailSheet($details, $range, $packageId, $overview['summary']);
-
-        $spreadsheet->setActiveSheetIndex(0);
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Laporan');
+        $this->reportSheet($sheet, $range, $packageId, $overview);
 
         return $spreadsheet;
     }
@@ -94,135 +87,126 @@ class ReportExportService
         $spreadsheet->disconnectWorksheets();
     }
 
-    /* ---------------------------------------------------------------
-     | Lembar "Ringkasan"
-     | ------------------------------------------------------------- */
-
     /** @param  array<string, mixed>  $overview */
-    private function summarySheet(Worksheet $sheet, array $overview): void
+    private function reportSheet(Worksheet $sheet, ReportRange $range, ?int $packageId, array $overview): void
     {
         $summary = $overview['summary'];
+        $row = 1;
 
-        $this->text($sheet, 'A1', $overview['business']['name']);
-        $this->text($sheet, 'A2', 'Laporan Pemasukan');
-        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(16);
-        $sheet->getStyle('A2')->getFont()->setBold(true)->setSize(13);
-
-        $meta = [
-            'Periode' => $overview['period']['label'],
-            'Paket' => $overview['package']['name'] ?? 'Semua paket',
-            'Zona waktu' => 'WITA (Asia/Makassar)',
-            'Dibuat' => now()->timezone(ReportRange::TIMEZONE)->format('d/m/Y H:i').' WITA',
+        // Judul
+        $titles = [
+            [$overview['business']['name'], 18, true],
+            ['Laporan Pemasukan', 14, true],
+            ['Periode: '.$overview['period']['label'].' (WITA)', 11, false],
+            ['Paket: '.($overview['package']['name'] ?? 'Semua paket'), 11, false],
+            ['Dibuat: '.now()->timezone(ReportRange::TIMEZONE)->format('d/m/Y H:i').' WITA', 10, false],
         ];
 
-        $row = 4;
-        foreach ($meta as $label => $value) {
-            $this->text($sheet, "A{$row}", $label);
-            $this->text($sheet, "B{$row}", $value);
-            $sheet->getStyle("A{$row}")->getFont()->setBold(true);
+        foreach ($titles as [$text, $size, $bold]) {
+            $this->text($sheet, "A{$row}", $text);
+            $sheet->mergeCells("A{$row}:L{$row}");
+            $sheet->getStyle("A{$row}")->applyFromArray([
+                'font' => ['bold' => $bold, 'size' => $size],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+            ]);
             $row++;
         }
 
-        // Angka ringkasan: baris 10-14
-        $this->text($sheet, 'A9', 'Ringkasan');
-        $sheet->getStyle('A9')->getFont()->setBold(true)->setSize(12);
+        $row++;
+
+        // Ringkasan
+        $this->section($sheet, $row++, 'Ringkasan');
 
         $figures = [
-            [10, 'Total pemasukan (Rp)', $summary['total_income'], self::MONEY],
-            [11, 'Jumlah transaksi', $summary['transaction_count'], self::INTEGER],
-            [12, 'Total berat cucian (kg)', $summary['total_weight_kg'], self::DECIMAL],
-            [13, 'Total jumlah item', $summary['total_items'], self::INTEGER],
-            [14, 'Rata-rata per transaksi (Rp)', $summary['average_transaction'], self::MONEY],
+            ['Total pemasukan (Rp)', $summary['total_income'], self::MONEY],
+            ['Jumlah transaksi', $summary['transaction_count'], self::INTEGER],
+            ['Total berat cucian (kg)', $summary['total_weight_kg'], self::DECIMAL],
+            ['Total jumlah item', $summary['total_items'], self::INTEGER],
+            ['Rata-rata per transaksi (Rp)', $summary['average_transaction'], self::MONEY],
         ];
 
-        foreach ($figures as [$line, $label, $value, $format]) {
-            $this->text($sheet, "A{$line}", $label);
-            $this->number($sheet, "B{$line}", $value);
-            $sheet->getStyle("B{$line}")->getNumberFormat()->setFormatCode($format);
-        }
+        $first = $row;
 
-        $sheet->getStyle('A10:B14')->applyFromArray($this->gridStyle());
-        $sheet->getStyle('A10:A14')->getFont()->setBold(true);
-        $sheet->getStyle('B10:B14')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-
-        // Pemasukan per paket: header baris 17, data mulai baris 18
-        $this->text($sheet, 'A16', 'Pemasukan per Paket');
-        $sheet->getStyle('A16')->getFont()->setBold(true)->setSize(12);
-
-        $headers = ['Paket', 'Satuan', 'Jumlah Transaksi', 'Jumlah Cucian', 'Pemasukan (Rp)', 'Kontribusi (%)'];
-
-        foreach ($headers as $index => $header) {
-            $this->text($sheet, Coordinate::stringFromColumnIndex($index + 1).'17', $header);
-        }
-
-        $sheet->getStyle('A17:F17')->applyFromArray($this->headerStyle());
-
-        $row = 18;
-
-        foreach ($overview['by_package'] as $package) {
-            $this->text($sheet, "A{$row}", $package['name']);
-            $this->text($sheet, "B{$row}", $package['unit']);
-            $this->number($sheet, "C{$row}", $package['transaction_count']);
-            $this->number($sheet, "D{$row}", $package['quantity']);
-            $this->number($sheet, "E{$row}", $package['total_income']);
-            $this->number($sheet, "F{$row}", $package['share_percent']);
+        foreach ($figures as [$label, $value, $format]) {
+            $this->text($sheet, "A{$row}", $label);
+            $sheet->mergeCells("A{$row}:C{$row}");
+            $this->number($sheet, "D{$row}", $value);
+            $sheet->getStyle("D{$row}")->getNumberFormat()->setFormatCode($format);
             $row++;
         }
 
-        if ($row === 18) {
-            $this->text($sheet, 'A18', 'Tidak ada transaksi selesai pada periode ini.');
-            $sheet->getStyle('A18')->getFont()->setItalic(true);
+        $sheet->getStyle("A{$first}:D".($row - 1))->applyFromArray($this->gridStyle());
+        $sheet->getStyle("A{$first}:C".($row - 1))->getFont()->setBold(true);
+        $row += 1;
+
+        // Pemasukan per paket
+        $this->section($sheet, $row++, 'Pemasukan per Paket');
+
+        if ($overview['by_package'] === []) {
+            $this->text($sheet, "A{$row}", 'Tidak ada transaksi selesai pada periode ini.');
+            $sheet->getStyle("A{$row}")->getFont()->setItalic(true);
+            $row++;
         } else {
+            $this->text($sheet, "A{$row}", 'Paket');
+            $sheet->mergeCells("A{$row}:C{$row}");
+            foreach (['D' => 'Satuan', 'E' => 'Jumlah Transaksi', 'F' => 'Jumlah Cucian', 'G' => 'Pemasukan (Rp)', 'I' => 'Kontribusi (%)'] as $col => $label) {
+                $this->text($sheet, "{$col}{$row}", $label);
+            }
+            $sheet->mergeCells("G{$row}:H{$row}");
+            $sheet->getStyle("A{$row}:I{$row}")->applyFromArray($this->headerStyle());
+
+            $headerRow = $row++;
+            $dataStart = $row;
+
+            foreach ($overview['by_package'] as $package) {
+                $this->text($sheet, "A{$row}", $package['name']);
+                $sheet->mergeCells("A{$row}:C{$row}");
+                $this->text($sheet, "D{$row}", $package['unit']);
+                $this->number($sheet, "E{$row}", $package['transaction_count']);
+                $this->number($sheet, "F{$row}", $package['quantity']);
+                $this->number($sheet, "G{$row}", $package['total_income']);
+                $sheet->mergeCells("G{$row}:H{$row}");
+                $this->number($sheet, "I{$row}", $package['share_percent']);
+                $row++;
+            }
+
             $this->text($sheet, "A{$row}", 'TOTAL');
-            $this->number($sheet, "C{$row}", $summary['transaction_count']);
-            $this->number($sheet, "E{$row}", $summary['total_income']);
+            $sheet->mergeCells("A{$row}:C{$row}");
+            $this->number($sheet, "E{$row}", $summary['transaction_count']);
+            $this->number($sheet, "G{$row}", $summary['total_income']);
+            $sheet->mergeCells("G{$row}:H{$row}");
 
-            $last = $row;
-
-            $sheet->getStyle("A17:F{$last}")->applyFromArray($this->gridStyle());
-            $sheet->getStyle("C18:C{$last}")->getNumberFormat()->setFormatCode(self::INTEGER);
-            $sheet->getStyle("D18:D{$last}")->getNumberFormat()->setFormatCode(self::DECIMAL);
-            $sheet->getStyle("E18:E{$last}")->getNumberFormat()->setFormatCode(self::MONEY);
-            $sheet->getStyle("F18:F{$last}")->getNumberFormat()->setFormatCode('0.0');
-            $sheet->getStyle("B18:B{$last}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-            $sheet->getStyle("A{$last}:F{$last}")->applyFromArray($this->totalStyle());
+            $sheet->getStyle("A{$headerRow}:I{$row}")->applyFromArray($this->gridStyle());
+            $sheet->getStyle("E{$dataStart}:E{$row}")->getNumberFormat()->setFormatCode(self::INTEGER);
+            $sheet->getStyle("F{$dataStart}:F{$row}")->getNumberFormat()->setFormatCode(self::DECIMAL);
+            $sheet->getStyle("G{$dataStart}:G{$row}")->getNumberFormat()->setFormatCode(self::MONEY);
+            $sheet->getStyle("I{$dataStart}:I{$row}")->getNumberFormat()->setFormatCode('0.0');
+            $sheet->getStyle("D{$dataStart}:D{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle("A{$row}:I{$row}")->applyFromArray($this->totalStyle());
+            $row++;
         }
 
-        foreach (['A' => 30, 'B' => 26, 'C' => 18, 'D' => 16, 'E' => 20, 'F' => 16] as $column => $width) {
-            $sheet->getColumnDimension($column)->setWidth($width);
-        }
+        $row++;
 
-        $sheet->getPageSetup()
-            ->setOrientation(PageSetup::ORIENTATION_PORTRAIT)
-            ->setPaperSize(PageSetup::PAPERSIZE_A4)
-            ->setFitToWidth(1)
-            ->setFitToHeight(0);
-    }
+        // Rincian semua transaksi customer
+        $this->section($sheet, $row++, 'Rincian Transaksi (Semua Customer)');
 
-    /* ---------------------------------------------------------------
-     | Lembar "Transaksi"
-     | ------------------------------------------------------------- */
-
-    /** @param  array<string, mixed>  $summary */
-    private function detailSheet(Worksheet $sheet, ReportRange $range, ?int $packageId, array $summary): void
-    {
         $headers = [
             'No', 'Kode Transaksi', 'Tanggal Masuk', 'Tanggal Selesai', 'Nama Customer', 'Paket',
             'Satuan', 'Jumlah', 'Harga Satuan (Rp)', 'Total (Rp)', 'Diterima Oleh', 'Diserahkan Oleh',
         ];
 
         foreach ($headers as $index => $header) {
-            $this->text($sheet, Coordinate::stringFromColumnIndex($index + 1).'1', $header);
+            $this->text($sheet, Coordinate::stringFromColumnIndex($index + 1).$row, $header);
         }
 
-        $sheet->getStyle('A1:L1')->applyFromArray($this->headerStyle());
-        $sheet->getRowDimension(1)->setRowHeight(24);
+        $sheet->getStyle("A{$row}:L{$row}")->applyFromArray($this->headerStyle());
+        $sheet->getRowDimension($row)->setRowHeight(24);
 
+        $header = $row++;
         $rows = $this->reports->exportRows($range, $packageId)->limit($this->rowLimit())->get()->values();
 
         foreach ($rows as $index => $transaction) {
-            $row = $index + 2;
-
             $this->number($sheet, "A{$row}", $index + 1);
             $this->text($sheet, "B{$row}", $transaction->code);
             $this->date($sheet, "C{$row}", $transaction->received_at);
@@ -235,57 +219,59 @@ class ReportExportService
             $this->number($sheet, "J{$row}", $transaction->total_price);
             $this->text($sheet, "K{$row}", $transaction->receiver?->name);
             $this->text($sheet, "L{$row}", $transaction->completer?->name);
+            $row++;
         }
 
         $count = $rows->count();
-        $lastData = $count + 1;
-        $totalRow = $lastData + 1;
 
         if ($count > 0) {
-            $sheet->getStyle("A1:L{$lastData}")->applyFromArray($this->gridStyle());
-            $sheet->getStyle("C2:D{$lastData}")->getNumberFormat()->setFormatCode(self::DATETIME);
-            $sheet->getStyle("H2:H{$lastData}")->getNumberFormat()->setFormatCode(self::DECIMAL);
-            $sheet->getStyle("I2:J{$lastData}")->getNumberFormat()->setFormatCode(self::MONEY);
-            $sheet->getStyle("A2:A{$lastData}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-            $sheet->getStyle("G2:G{$lastData}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-            $sheet->setAutoFilter("A1:L{$lastData}");
+            $last = $row - 1;
+            $first = $header + 1;
+
+            $sheet->getStyle("A{$header}:L{$last}")->applyFromArray($this->gridStyle());
+            $sheet->getStyle("C{$first}:D{$last}")->getNumberFormat()->setFormatCode(self::DATETIME);
+            $sheet->getStyle("H{$first}:H{$last}")->getNumberFormat()->setFormatCode(self::DECIMAL);
+            $sheet->getStyle("I{$first}:J{$last}")->getNumberFormat()->setFormatCode(self::MONEY);
+            $sheet->getStyle("A{$first}:A{$last}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle("G{$first}:G{$last}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->setAutoFilter("A{$header}:L{$last}");
         }
 
-        // Total berasal dari agregasi database (mencakup semua transaksi, bukan hanya baris yang tampil).
-        $this->text($sheet, "B{$totalRow}", "TOTAL ({$summary['transaction_count']} transaksi)");
-        $this->number($sheet, "J{$totalRow}", $summary['total_income']);
-        $sheet->getStyle("J{$totalRow}")->getNumberFormat()->setFormatCode(self::MONEY);
-        $sheet->getStyle("A{$totalRow}:L{$totalRow}")->applyFromArray($this->totalStyle());
+        // Total dari agregasi database (mencakup semua transaksi, bukan hanya baris yang tampil).
+        $this->text($sheet, "B{$row}", "TOTAL ({$summary['transaction_count']} transaksi)");
+        $this->number($sheet, "J{$row}", $summary['total_income']);
+        $sheet->getStyle("J{$row}")->getNumberFormat()->setFormatCode(self::MONEY);
+        $sheet->getStyle("A{$row}:L{$row}")->applyFromArray($this->totalStyle());
 
         if ($summary['transaction_count'] > $count) {
+            $note = $row + 2;
             $this->text(
                 $sheet,
-                'B'.($totalRow + 2),
-                "Catatan: hanya {$count} transaksi pertama (berdasarkan tanggal selesai) yang ditampilkan di lembar ini. "
-                .'Total di atas dan lembar Ringkasan mencakup seluruh transaksi. Persempit periode untuk melihat rincian lengkap.'
+                "B{$note}",
+                "Catatan: hanya {$count} transaksi pertama (berdasarkan tanggal selesai) yang ditampilkan. "
+                .'Total di atas dan bagian Ringkasan mencakup seluruh transaksi. Persempit periode untuk rincian lengkap.'
             );
-            $sheet->getStyle('B'.($totalRow + 2))->getFont()->setItalic(true);
+            $sheet->getStyle("B{$note}")->getFont()->setItalic(true);
         }
 
-        $widths = ['A' => 6, 'B' => 18, 'C' => 18, 'D' => 18, 'E' => 26, 'F' => 24, 'G' => 9, 'H' => 11, 'I' => 18, 'J' => 18, 'K' => 22, 'L' => 22];
+        $widths = ['A' => 6, 'B' => 18, 'C' => 18, 'D' => 18, 'E' => 26, 'F' => 24, 'G' => 10, 'H' => 12, 'I' => 18, 'J' => 18, 'K' => 22, 'L' => 22];
 
         foreach ($widths as $column => $width) {
             $sheet->getColumnDimension($column)->setWidth($width);
         }
 
-        $sheet->freezePane('A2');
-
         $sheet->getPageSetup()
             ->setOrientation(PageSetup::ORIENTATION_LANDSCAPE)
             ->setPaperSize(PageSetup::PAPERSIZE_A4)
             ->setFitToWidth(1)
-            ->setFitToHeight(0)
-            ->setRowsToRepeatAtTopByStartAndEnd(1, 1);
+            ->setFitToHeight(0);
     }
 
-    /* ---------------------------------------------------------------
-     | Pembantu sel dan gaya
-     | ------------------------------------------------------------- */
+    private function section(Worksheet $sheet, int $row, string $title): void
+    {
+        $this->text($sheet, "A{$row}", $title);
+        $sheet->getStyle("A{$row}")->getFont()->setBold(true)->setSize(12);
+    }
 
     /** Selalu teks murni: isi yang diawali "=" tidak akan dijalankan sebagai rumus. */
     private function text(Worksheet $sheet, string $coordinate, ?string $value): void
@@ -307,11 +293,9 @@ class ReportExportService
 
         $serial = ExcelDate::PHPToExcel($date->copy()->timezone(ReportRange::TIMEZONE));
 
-        if ($serial === false) {
-            return;
+        if ($serial !== false) {
+            $sheet->setCellValueExplicit($coordinate, $serial, DataType::TYPE_NUMERIC);
         }
-
-        $sheet->setCellValueExplicit($coordinate, $serial, DataType::TYPE_NUMERIC);
     }
 
     /** @return array<string, mixed> */
@@ -332,9 +316,7 @@ class ReportExportService
     /** @return array<string, mixed> */
     private function gridStyle(): array
     {
-        return [
-            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => self::BORDER_COLOR]]],
-        ];
+        return ['borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => self::BORDER_COLOR]]]];
     }
 
     /** @return array<string, mixed> */

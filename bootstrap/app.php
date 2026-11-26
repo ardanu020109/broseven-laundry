@@ -2,17 +2,19 @@
 
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\RoleMiddleware;
+use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 
-return Application::configure(basePath: dirname(__DIR__))
+$app = Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
@@ -23,15 +25,15 @@ return Application::configure(basePath: dirname(__DIR__))
         // SPA satu domain: sesi berbasis cookie + proteksi CSRF lewat Sanctum.
         $middleware->statefulApi();
 
+        // Header keamanan untuk semua respons.
+        $middleware->append(SecurityHeaders::class);
+
         $middleware->alias([
             'role' => RoleMiddleware::class,
             'active' => EnsureUserIsActive::class,
         ]);
 
-        // Otorisasi harus berjalan SEBELUM route model binding. Urutannya:
-        // login -> akun aktif -> role -> binding. Tanpa ini, karyawan yang mengakses
-        // /api/admin/xxx/{id} mendapat 404 (ID tidak ada) atau 403 (ID ada), sehingga
-        // keberadaan data bisa ditebak.
+        // Otorisasi harus berjalan SEBELUM route model binding: login -> akun aktif -> role -> binding.
         $middleware->prependToPriorityList(SubstituteBindings::class, EnsureUserIsActive::class);
         $middleware->prependToPriorityList(SubstituteBindings::class, RoleMiddleware::class);
 
@@ -80,3 +82,14 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
     })->create();
+
+// Dibaca dari config() SETELAH aplikasi boot: env() tidak boleh dipakai di sini karena config cache.
+$app->booted(function () {
+    $proxies = config('broseven.security.trusted_proxies');
+
+    if (is_string($proxies) && trim($proxies) !== '') {
+        TrustProxies::at(trim($proxies) === '*' ? '*' : array_map('trim', explode(',', $proxies)));
+    }
+});
+
+return $app;
