@@ -6,6 +6,7 @@ import BaseButton from '@/components/common/BaseButton.vue';
 import BaseCard from '@/components/common/BaseCard.vue';
 import BaseEmptyState from '@/components/common/BaseEmptyState.vue';
 import BaseInput from '@/components/common/BaseInput.vue';
+import BaseDateInput from '@/components/common/BaseDateInput.vue';
 import BaseLoading from '@/components/common/BaseLoading.vue';
 import BaseSelect from '@/components/common/BaseSelect.vue';
 import BaseTextarea from '@/components/common/BaseTextarea.vue';
@@ -264,9 +265,9 @@ function cancel() {
                 <h3 class="form__title">Estimasi dan Catatan</h3>
 
                 <div class="form__stack">
-                    <BaseInput
+                    <BaseDateInput
                         v-model="form.estimated_completion_at"
-                        type="datetime-local"
+                        with-time
                         label="Estimasi selesai"
                         :hint="estimateHint"
                         :error="errors.estimated_completion_at"

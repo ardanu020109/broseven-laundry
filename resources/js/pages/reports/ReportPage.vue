@@ -6,6 +6,7 @@ import BaseButton from '@/components/common/BaseButton.vue';
 import BaseCard from '@/components/common/BaseCard.vue';
 import BaseEmptyState from '@/components/common/BaseEmptyState.vue';
 import BaseInput from '@/components/common/BaseInput.vue';
+import BaseDateInput from '@/components/common/BaseDateInput.vue';
 import BaseLoading from '@/components/common/BaseLoading.vue';
 import BasePagination from '@/components/common/BasePagination.vue';
 import BaseSelect from '@/components/common/BaseSelect.vue';
@@ -239,8 +240,8 @@ onBeforeUnmount(() => clearTimeout(searchTimer));
                         <BaseSelect v-model="filters.package_id" label="Paket laundry" :options="packageOptions" />
 
                         <template v-if="filters.period === 'custom'">
-                            <BaseInput v-model="filters.date_from" type="date" label="Tanggal awal" :max="filters.date_to" />
-                            <BaseInput v-model="filters.date_to" type="date" label="Tanggal akhir" :min="filters.date_from" />
+                            <BaseDateInput v-model="filters.date_from" label="Tanggal awal" :max="filters.date_to" />
+                            <BaseDateInput v-model="filters.date_to" label="Tanggal akhir" :min="filters.date_from" />
                         </template>
                     </div>
 

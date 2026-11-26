@@ -7,6 +7,7 @@ import BaseButton from '@/components/common/BaseButton.vue';
 import BaseEmptyState from '@/components/common/BaseEmptyState.vue';
 import BaseIconButton from '@/components/common/BaseIconButton.vue';
 import BaseInput from '@/components/common/BaseInput.vue';
+import BaseDateInput from '@/components/common/BaseDateInput.vue';
 import BaseLoading from '@/components/common/BaseLoading.vue';
 import BasePagination from '@/components/common/BasePagination.vue';
 import BaseSelect from '@/components/common/BaseSelect.vue';
@@ -160,9 +161,8 @@ function clearFilters() {
             </div>
 
             <div class="tx__field">
-                <BaseInput
+                <BaseDateInput
                     :model-value="state.date_from"
-                    type="date"
                     aria-label="Tanggal awal"
                     :max="state.date_to || undefined"
                     @update:model-value="(value) => push({ date_from: value, page: 1 })"
@@ -170,9 +170,8 @@ function clearFilters() {
             </div>
 
             <div class="tx__field">
-                <BaseInput
+                <BaseDateInput
                     :model-value="state.date_to"
-                    type="date"
                     aria-label="Tanggal akhir"
                     :min="state.date_from || undefined"
                     @update:model-value="(value) => push({ date_to: value, page: 1 })"
