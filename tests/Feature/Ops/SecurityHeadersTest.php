@@ -17,7 +17,6 @@ class SecurityHeadersTest extends TestCase
         $this->get('/')->assertHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=(), payment=()');
     }
 
-
     public function test_api_responses_have_no_csp_and_token_pages_keep_their_referrer_policy(): void
     {
         $this->getJson('/api/public/site')->assertHeaderMissing('Content-Security-Policy-Report-Only');
